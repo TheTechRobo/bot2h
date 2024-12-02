@@ -87,7 +87,6 @@ class Command:
         elif self.parser:
             args = shlex.split(" ".join(args)) # split using shell splitting instead of by spaces
             #args = [arg for arg in args if arg != ""]
-            print(args)
             try:
                 parsed = self.parser.parse_args(args)
             except ArgumentParsingError as e:
