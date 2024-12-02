@@ -5,9 +5,12 @@ import asyncio
 import logging
 import shlex
 import inspect
+import logging
 import functools
 
 import aiohttp
+
+logger = logging.getLogger(__name__)
 
 __all__ = ["Bot", "Prefix", "StatusCodeError", "MessageSendError"]
 
@@ -35,8 +38,9 @@ async def retrying_jsonl(url: str):
                     # Client error
                     raise
             except Exception:
-                pass
+                logging.exception("Error occured in h2ibot stream")
             to_sleep = min(64, 2**tries)
+            logging.warning(f"Sleeping {to_sleep} seconds before retrying")
             await asyncio.sleep(to_sleep)
             tries += 1
 
@@ -172,6 +176,7 @@ class Bot:
             message = line['message']
             args = message.split(" ")
             if runner := self.lookup_command(args[0]):
+                logging.debug(f"Running handler command {runner.__name__}")
                 try:
                     async for message in runner(user, args[0], *args[1:]):
                         if isinstance(message, str):
@@ -183,7 +188,7 @@ class Bot:
                         await self.send_message(message)
                 except Exception:
                     await self.send_message(f"{user['nick']}: An error occured when processing the command.")
-                    logging.exception("Exception occured in command processor")
+                    logging.exception(f"Exception occured in command processor for {args[0]}")
 
     async def run_forever(self):
         async for message in retrying_jsonl(self.get_url):
