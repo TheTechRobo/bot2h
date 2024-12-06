@@ -57,7 +57,7 @@ class Command:
         self.parser = None
         self.raw = False
 
-    def validate_default_arg_type(self, args, ran):
+    def validate_default_arg_type(self, args, ran) -> typing.Optional[str]:
         argspec = inspect.getfullargspec(self.runner)
         # Take the number of arguments, subtract the number of arguments with default values, then subtract
         # the number of arguments that are not from the message.
@@ -299,7 +299,7 @@ class Colour:
         raise TypeError("Colour is a static class and cannot be instantiated")
 
     @staticmethod
-    def make_colour(fg: str, bg: typing.Optional[str] = None, escape=True):
+    def make_colour(fg: str, bg: typing.Optional[str] = None, escape=True) -> str:
         """
         Makes a colour definition to be applied to your message.
         If bg is not provided, it stays the same.
