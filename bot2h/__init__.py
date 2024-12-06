@@ -12,7 +12,7 @@ import aiohttp
 
 logger = logging.getLogger(__name__)
 
-__all__ = ["Bot", "Prefix", "StatusCodeError", "MessageSendError"]
+__all__ = ["Bot", "Prefix", "StatusCodeError", "MessageSendError", "Format", "Colour"]
 
 class StatusCodeError(Exception):
     def __init__(self, code: int):
@@ -243,3 +243,76 @@ class ArgumentParser(argparse.ArgumentParser):
 
     def error(self, message):
         raise ArgumentParsingError(message)
+
+class Format:
+    """
+    IRC formatting codes. Format codes are best effort; not all clients support them,
+    and some channels/servers are configured to ignore them.
+
+    To use, apply one of the provided constants to your string. It's that easy!
+    These codes work as toggles, except for RESET.
+
+    REVERSE_COLOUR is not very well-supported.
+    Codes are taken from <https://modern.ircdocs.horse/formatting>.
+    """
+    BOLD = "\x02"
+    ITALIC = "\x1D"
+    UNDERLINE = "\x1F"
+    STRIKETHROUGH = "\x1E"
+    MONOSPACE = "\x11"
+    REVERSE_COLOUR = "\x16"
+    RESET = "\x0F"
+
+    def __new__(_cls):
+        raise TypeError("Format is a static class and cannot be instantiated")
+
+class Colour:
+    """
+    IRC colours! Similarly to formatting codes, colours are best-effort. Some clients
+    do not support them, and some channels or servers have them disabled.
+
+    To use, call Colour.make_colour with any two-digit value
+    from <https://modern.ircdocs.horse/formatting>.
+    Presets of the most common colours are provided in this class.
+
+    DEFAULT is not universally supported.
+    """
+    WHITE        = "00"
+    BLACK        = "01"
+    BLUE         = "02"
+    GREEN        = "03"
+    RED          = "04"
+    BROWN        = "05"
+    MAGENTA      = "06"
+    ORANGE       = "07"
+    YELLOW       = "08"
+    LGREEN       = "09"
+    CYAN         = "10"
+    LIGHT_CYAN   = "11"
+    LIGHT_BLUE   = "12"
+    PINK         = "13"
+    GREY         = "14"
+    LIGHT_GREY   = "15"
+    DEFAULT      = "99"
+
+    def __new__(_cls):
+        raise TypeError("Colour is a static class and cannot be instantiated")
+
+    @staticmethod
+    def make_colour(fg: str, bg: typing.Optional[str] = None, escape=True):
+        """
+        Makes a colour definition to be applied to your message.
+        If bg is not provided, it stays the same.
+
+        If escape is set to True, and bg is not set, a bold-unbold combination is.
+        added to the end. This reduces ambiguity in some situations. If this is
+        not desirable (for example, you are hitting the line limit), set it to False.
+        """
+        if len(fg) != 2 or (bg and len(bg) != 2):
+            # Technically single-digit ones are permissible, but they are ambiguous.
+            raise ValueError("fg and bg must be of size 2")
+        tail = ""
+        bg = f",{bg}" if bg else ""
+        if escape and not bg:
+            tail = Format.BOLD * 2
+        return "\x03" + fg + bg + tail
