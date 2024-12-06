@@ -122,6 +122,9 @@ bot.raw(
 )
 ```
 
+## Colours
+Colours are fun! They are supported with the `Format` and `Colour` classes.
+
 ## Licence
 
    Copyright 2023-2024 TheTechRobo
