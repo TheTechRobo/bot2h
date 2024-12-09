@@ -49,7 +49,7 @@ class Prefix(str): pass
 class Command:
     parser: typing.Optional["ArgumentParser"]
 
-    def __init__(self: "Command", match: str | Prefix, r, required_modes):
+    def __init__(self: "Command", match: str | Prefix | set, r, required_modes):
         self.match = match
         self.runner = r
         self.required_modes = required_modes
@@ -140,19 +140,15 @@ class Bot:
             if response.status != 200:
                 raise MessageSendError(response.status)
 
-    def command(self, f=None, *, match=None, requiredModes=None):
-        if f and isinstance(f, (str, set, Prefix)):
-            return functools.partial(self.command, match=f)
-        elif f:
-            if (not match):
-                raise ValueError("match arg is required")
-            cmd = Command(match, f, requiredModes)
+    def command(self, match, *, required_modes=None):
+        def inner(f: typing.Callable) -> Command:
+            cmd = Command(match, f, required_modes)
             cmd.__name__ = match
             self.commands.append(cmd)
             return cmd
-        raise ValueError("first arg must be function or match")
+        return inner
 
-    def lookup_command(self, command: str):
+    def lookup_command(self, command: str) -> typing.Optional[Command]:
         for runner in self.commands:
             if isinstance(runner.match, Prefix):
                 if command.startswith(runner.match):
@@ -196,22 +192,18 @@ class Bot:
             except Exception:
                 logging.exception("Exception occured when handling IRC line")
 
-    def argparse(self, command: typing.Optional[Command] = None, command_name: typing.Optional[str] = None):
+    def argparse(self, canonical_name: str):
         """
         Sets the parse mode to argparse. The function signature will look like this:
         async def foo(self: Bot, user, ran, args: Namespace)
         command_name is purely cosmetic and is used in the usage message.
         """
-        if not command:
-            if not command_name:
-                raise TypeError("command_name argument is required")
-            return functools.partial(self.argparse, command_name=command_name)
-        if not command_name:
-            raise TypeError("command_name argument is required")
-        command.make_argparse(command_name)
-        return command
+        def inner(command: Command) -> Command:
+            command.make_argparse(canonical_name)
+            return command
+        return inner
 
-    def raw(self, command: Command):
+    def raw(self, command: Command) -> Command:
         """
         Sets the parse mode to raw. The function signature will look like this:
         async def foo(self: Bot, user, ran, message: str)
@@ -225,10 +217,22 @@ class Bot:
         Identical to argparse.ArgumentParser.add_argument.
         Must use make_argparse first (below).
         """
-        def ret(command: Command):
+        def ret(command: Command) -> Command:
             command.add_argument(*args, **kwargs)
             return command
         return ret
+
+class SendOnlyBot:
+    def __init__(self, post_url):
+        self.post_url = post_url
+        self.send_session = None
+
+    async def send_message(self, message):
+        if not self.send_session:
+            self.send_session = aiohttp.ClientSession()
+        async with self.send_session.post(self.post_url, data=message) as response:
+            if response.status != 200:
+                raise MessageSendError(response.status)
 
 class ArgumentParsingError(Exception):
     def __init__(self, msg):
