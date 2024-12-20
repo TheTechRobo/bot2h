@@ -6,7 +6,6 @@ import logging
 import shlex
 import inspect
 import logging
-import functools
 
 import aiohttp
 
@@ -127,10 +126,18 @@ class Bot:
     send_session: typing.Optional[aiohttp.ClientSession]
     commands: list[Command]
 
-    def __init__(self, get_url, post_url):
+    def __init__(self, get_url, post_url, *, max_coros = 1):
+        """
+        Creates the Bot object.
+
+        :param get_url: The h2ibot stream URL.
+        :param post_url: The h2ibot send URL.
+        :param max_coros: The maximum number of messages to process simultaneously. -1 = no limit.
+        """
         self.get_url = get_url
         self.post_url = post_url
         self.send_session = None
+        self.max_workers = max_coros
         self.commands = []
 
     async def send_message(self, message):
@@ -186,11 +193,14 @@ class Bot:
                     logging.exception(f"Exception occured in command processor for {args[0]}")
 
     async def run_forever(self):
+        coros = set()
         async for message in retrying_jsonl(self.get_url):
-            try:
-                await self.handle_irc_line(message)
-            except Exception:
-                logging.exception("Exception occured when handling IRC line")
+            if self.max_workers > 0 and len(coros) >= self.max_workers:
+                await asyncio.wait(coros, return_when = asyncio.FIRST_COMPLETED)
+                assert self.max_workers >= len(coros)
+            coro = asyncio.create_task(self.handle_irc_line(message))
+            coros.add(coro)
+            coro.add_done_callback(coros.discard)
 
     def argparse(self, canonical_name: str):
         """
