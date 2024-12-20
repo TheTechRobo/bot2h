@@ -125,6 +125,11 @@ bot.raw(
 ## Colours
 Colours are fun! They are supported with the `Format` and `Colour` classes.
 
+## Running commands in parallel
+If you have slow or long-running commands, it may be wise to allow running commands in parallel. When you are constructing a `Bot`, use the `max_coros` parameter to change the maximum number of coroutines that will be spawned for commands. Set it to -1 (any number less than or equal to zero works) for no limit, although keep DoS in mind.
+
+**NB:** You will need some way of marking messages so it is clear what message(s) belong to what command. Additionally, many users are accustomed to having queued commands run one after the other in a deterministic order. As such, `max_coros` defaults to 1.
+
 ## Licence
 
    Copyright 2023-2024 TheTechRobo
