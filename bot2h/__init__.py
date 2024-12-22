@@ -3,7 +3,6 @@ import argparse
 import dataclasses
 import typing
 import asyncio
-import logging
 import shlex
 import inspect
 import logging
@@ -38,9 +37,9 @@ async def retrying_jsonl(url: str):
                     # Client error
                     raise
             except Exception:
-                logging.exception("Error occured in h2ibot stream")
+                logger.exception("Error occured in h2ibot stream")
             to_sleep = min(64, 2**tries)
-            logging.warning(f"Sleeping {to_sleep} seconds before retrying")
+            logger.warning(f"Sleeping {to_sleep} seconds before retrying")
             await asyncio.sleep(to_sleep)
             tries += 1
 
@@ -145,16 +144,12 @@ class Bot:
         """
         self.get_url = get_url
         self.post_url = post_url
-        self.send_session = None
+        self._sender = SendOnlyBot(post_url)
         self.max_workers = max_coros
         self.commands = []
 
     async def send_message(self, message):
-        if not self.send_session:
-            self.send_session = aiohttp.ClientSession()
-        async with self.send_session.post(self.post_url, data=message) as response:
-            if response.status != 200:
-                raise MessageSendError(response.status)
+        return await self._sender.send_message(message)
 
     def command(self, match, *, required_modes=None):
         def inner(f: typing.Callable) -> Command:
@@ -187,7 +182,7 @@ class Bot:
             message = line['message']
             args = message.split(" ")
             if runner := self.lookup_command(args[0]):
-                logging.debug(f"Running handler command {runner.__name__}")
+                logger.debug(f"Running handler command {runner.__name__}")
                 try:
                     async for message in runner(self, user, args[0], *args[1:]):
                         if isinstance(message, str):
@@ -199,7 +194,7 @@ class Bot:
                         await self.send_message(message)
                 except Exception:
                     await self.send_message(f"{user.nick}: An error occured when processing the command.")
-                    logging.exception(f"Exception occured in command processor for {args[0]}")
+                    logger.exception(f"Exception occured in command processor for {args[0]}")
 
     async def run_forever(self):
         coros = set()
@@ -249,9 +244,22 @@ class SendOnlyBot:
     async def send_message(self, message):
         if not self.send_session:
             self.send_session = aiohttp.ClientSession()
-        async with self.send_session.post(self.post_url, data=message) as response:
-            if response.status != 200:
-                raise MessageSendError(response.status)
+        tries = 0
+        while True:
+            try:
+                async with self.send_session.post(self.post_url, data=message) as response:
+                    if response.status != 200:
+                        raise MessageSendError(response.status)
+            except Exception:
+                if tries > 4:
+                    logger.exception("max tries reached when sending message, raising")
+                    raise
+                to_sleep = 1.5 ** tries
+                logger.exception(f"error when sending message, retrying {to_sleep}")
+                await asyncio.sleep(to_sleep)
+                tries += 1
+            else:
+                break
 
 class ArgumentParsingError(Exception):
     def __init__(self, msg):
