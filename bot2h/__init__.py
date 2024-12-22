@@ -67,14 +67,14 @@ class Command:
         argspec = inspect.getfullargspec(self.runner)
         # Take the number of arguments, subtract the number of arguments with default values, then subtract
         # the number of arguments that are not from the message.
-        minArgs = len(argspec.args) - len(argspec.defaults or ()) - 3
+        min_args = len(argspec.args) - len(argspec.defaults or ()) - 3
         if argspec.varargs:
-            maxArgs = 5000
+            max_args = 5000
         else:
-            maxArgs = len(argspec.args) - 3
-        if len(args) < minArgs:
+            max_args = len(argspec.args) - 3
+        if len(args) < min_args:
             return f"Not enough arguments for command {ran}."
-        if len(args) > maxArgs:
+        if len(args) > max_args:
             return f"Too many arguments for command {ran}."
         return None
 
@@ -167,13 +167,14 @@ class Bot:
             elif isinstance(runner.match, str):
                 if command == runner.match:
                     return runner
-            elif type(runner.match) == set:
+            elif isinstance(runner.match, set):
                 for match in runner.match:
                     if command == match:
                         return runner
             else:
                 # theoretically unreachable
                 raise AssertionError("Task failed spectacularly.")
+        return None
 
     async def handle_irc_line(self, line):
         command = line['command']
