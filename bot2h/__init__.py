@@ -71,7 +71,7 @@ class Command:
             return f"Too many arguments for command {ran}."
         return None
 
-    async def __call__(self: "Command", user, ran, *args):
+    async def __call__(self: "Command", bot: "Bot", user, ran, *args):
         if modes := self.required_modes:
             success = False
             for mode in modes:
@@ -82,7 +82,7 @@ class Command:
                 return
 
         if self.raw:
-            gen = self.runner(self, user, ran, " ".join(args))
+            gen = self.runner(bot, user, ran, " ".join(args))
         elif self.parser:
             args = shlex.split(" ".join(args)) # split using shell splitting instead of by spaces
             #args = [arg for arg in args if arg != ""]
@@ -93,12 +93,12 @@ class Command:
                     yield line
                 yield e.msg.strip()
                 return
-            gen = self.runner(self, user, ran, parsed)
+            gen = self.runner(bot, user, ran, parsed)
         else:
             if error := self.validate_default_arg_type(args, ran):
                 yield error
                 return
-            gen = self.runner(self, user, ran, *args)
+            gen = self.runner(bot, user, ran, *args)
         async for msg in gen:
             yield msg
 
@@ -180,7 +180,7 @@ class Bot:
             if runner := self.lookup_command(args[0]):
                 logging.debug(f"Running handler command {runner.__name__}")
                 try:
-                    async for message in runner(user, args[0], *args[1:]):
+                    async for message in runner(self, user, args[0], *args[1:]):
                         if isinstance(message, str):
                             message = (user['nick'], message)
                         if ping := message[0]:
