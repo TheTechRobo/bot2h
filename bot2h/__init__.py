@@ -188,7 +188,11 @@ class Bot:
                         if isinstance(message, str):
                             message = (user.nick, message)
                         if ping := message[0]:
-                            message = f"{ping}: {message[1]}"
+                            if ping == ME:
+                                # CTCP ACTION
+                                message = f"{ping}{message[1]}\x01"
+                            else:
+                                message = f"{ping}: {message[1]}"
                         else:
                             message = message[1]
                         await self.send_message(message)
@@ -347,3 +351,5 @@ class Colour:
         if escape and not bg:
             tail = Format.BOLD * 2
         return "\x03" + fg + bg + tail
+
+ME = "\x01ACTION "
