@@ -1,5 +1,6 @@
 import json
 import argparse
+import dataclasses
 import typing
 import asyncio
 import logging
@@ -45,6 +46,13 @@ async def retrying_jsonl(url: str):
 
 class Prefix(str): pass
 
+@dataclasses.dataclass
+class User:
+    nick: str
+    hostmask: str
+    account: str
+    modes: str
+
 class Command:
     parser: typing.Optional["ArgumentParser"]
 
@@ -75,10 +83,11 @@ class Command:
         if modes := self.required_modes:
             success = False
             for mode in modes:
-                if mode in user['modes']:
+                if mode in user.modes:
                     success = True
+                    break
             if not success:
-                yield f"You don't have the required permissions to use this command. ({self.required_modes})"
+                yield f"You don't have the required permissions to use this command. (one of ({self.required_modes}) is required)"
                 return
 
         if self.raw:
@@ -174,7 +183,7 @@ class Bot:
     async def handle_irc_line(self, line):
         command = line['command']
         if command == "PRIVMSG":
-            user = line['user']
+            user = User(**line['user'])
             message = line['message']
             args = message.split(" ")
             if runner := self.lookup_command(args[0]):
@@ -182,14 +191,14 @@ class Bot:
                 try:
                     async for message in runner(self, user, args[0], *args[1:]):
                         if isinstance(message, str):
-                            message = (user['nick'], message)
+                            message = (user.nick, message)
                         if ping := message[0]:
                             message = f"{ping}: {message[1]}"
                         else:
                             message = message[1]
                         await self.send_message(message)
                 except Exception:
-                    await self.send_message(f"{user['nick']}: An error occured when processing the command.")
+                    await self.send_message(f"{user.nick}: An error occured when processing the command.")
                     logging.exception(f"Exception occured in command processor for {args[0]}")
 
     async def run_forever(self):
