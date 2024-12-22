@@ -69,7 +69,6 @@ Or no one at all:
 async def goodbye(self: Bot, user, ran, target_user):
 	yield None, "I am now dead."
 ```
-```
 
 Or even CTCP ACTION (/me):
 
@@ -88,6 +87,7 @@ Can't spell? Use a prefix!
 # <b> p: 0 items in the queue.
 @bot.command(Prefix("!s"))
 async def status(self: Bot, user, ran, target_user):
+```
 
 ## Parsing modes
 The default parsing mode splits the message into spaces, uses the first item as the command, and then maps it to a functions arguments. You won't ever have to deal with users giving you too many or too few arguments unless you use variadic arguments (`*args`), as bot2h will provide a nice error message.
