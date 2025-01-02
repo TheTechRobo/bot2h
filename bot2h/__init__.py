@@ -24,7 +24,8 @@ class MessageSendError(Exception): pass
 
 async def retrying_jsonl(url: str):
     tries = 0
-    async with aiohttp.ClientSession() as session:
+    timeout = aiohttp.ClientTimeout(total = None, connect = 10, sock_connect = 10, sock_read = None)
+    async with aiohttp.ClientSession(timeout = timeout) as session:
         while True:
             try:
                 async with session.get(url) as response:
