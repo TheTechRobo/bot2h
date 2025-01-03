@@ -24,13 +24,14 @@ class MessageSendError(Exception): pass
 
 async def retrying_jsonl(url: str):
     tries = 0
-    timeout = aiohttp.ClientTimeout(total = None, connect = 10, sock_connect = 10, sock_read = None)
+    timeout = aiohttp.ClientTimeout(total = None, connect = 10, sock_connect = 10, sock_read = 300)
     async with aiohttp.ClientSession(timeout = timeout) as session:
         while True:
             try:
                 async with session.get(url) as response:
                     if response.status != 200:
                         raise StatusCodeError(response.status)
+                    tries = 0 # successful connection, reset count
                     async for line in response.content:
                         yield json.loads(line.decode())
             except StatusCodeError as e:
