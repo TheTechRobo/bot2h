@@ -95,12 +95,11 @@ class Command:
             gen = self.runner(bot, user, ran, " ".join(args))
         elif self.parser:
             args = shlex.split(" ".join(args)) # split using shell splitting instead of by spaces
-            #args = [arg for arg in args if arg != ""]
             try:
                 parsed = self.parser.parse_args(args)
             except ArgumentParsingError as e:
-                for line in self.parser.format_usage().strip().split("\n"):
-                    yield line
+                usage = self.parser.format_usage().strip().replace("\n", " ")
+                yield usage
                 yield e.msg.strip()
                 return
             gen = self.runner(bot, user, ran, parsed)
