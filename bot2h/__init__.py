@@ -98,7 +98,8 @@ class Command:
             try:
                 parsed = self.parser.parse_args(args)
             except ArgumentParsingError as e:
-                usage = self.parser.format_usage().strip().replace("\n", " ")
+                usage = self.parser.format_usage()
+                usage = " ".join((line.strip() for line in usage.split("\n")))
                 yield usage
                 yield e.msg.strip()
                 return
