@@ -122,6 +122,19 @@ async def raw(self: Bot, user, ran, msg):
 ```
 Note how even in raw mode, the part before the first space of the message is not in the message, and is instead accessible in the `ran` parameter.
 
+Finally, you can use shell splitting mode, which runs `shutil.split` on the input, allowing spaces in arguments:
+
+```python
+# <p> !test a b "c d"
+# <b> p: ('a', 'b', 'c d')
+# <p> !test a b "c d" e
+# <b> p: Too many arguments for command !test.
+@bot.shell_split
+@bot.command("!test")
+async def test(self: Bot, user: User, ran, a, b, c):
+    yield repr((a,b,c))
+```
+
 Also note how the decorators must be applied in reverse order (`@raw` followed by `@command`, or `@add_argument` followed by `@argparse` followed by `@command`). It's easier to think about it if you imagine the decorator having an open bracket at the end, closing at the end of the function. Like this:
 ```
 bot.raw(

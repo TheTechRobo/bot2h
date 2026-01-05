@@ -64,6 +64,7 @@ class Command:
         self.help = self.runner.__doc__
         self.parser = None
         self.raw = False
+        self.shell_split = False
 
     def validate_default_arg_type(self, args, ran) -> typing.Optional[str]:
         argspec = inspect.getfullargspec(self.runner)
@@ -105,6 +106,8 @@ class Command:
                 return
             gen = self.runner(bot, user, ran, parsed)
         else:
+            if self.shell_split:
+                args = shlex.split(" ".join(args))
             if error := self.validate_default_arg_type(args, ran):
                 yield error
                 return
@@ -113,13 +116,18 @@ class Command:
             yield msg
 
     def make_raw(self):
-        if self.parser:
-            raise ValueError("cannot use raw and argparse modes at once")
+        if self.parser or self.use_shell_splitting:
+            raise ValueError("cannot use multiple modes at once")
         self.raw = True
+
+    def use_shell_splitting(self):
+        if self.raw:
+            raise ValueError("cannot use multiple modes at once")
+        self.shell_split = True
 
     def make_argparse(self, command_name):
         if self.raw:
-            raise ValueError("cannot use raw and argparse modes at once")
+            raise ValueError("cannot use multiple modes at once")
         if not self.parser:
             self.parser = ArgumentParser(prog=command_name)
 
@@ -223,6 +231,10 @@ class Bot:
             command.make_argparse(canonical_name)
             return command
         return inner
+
+    def shell_split(self, command: Command):
+        command.use_shell_splitting()
+        return command
 
     def raw(self, command: Command) -> Command:
         """
