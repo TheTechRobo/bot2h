@@ -157,6 +157,12 @@ class Bot:
         self._sender = SendOnlyBot(post_url)
         self.max_workers = max_coros
         self.commands = []
+        self.current_exception_handler = self._default_exception_handler
+
+    @staticmethod
+    async def _default_exception_handler(self, command, user, _e):
+        logger.exception(f"Unhandled exception occured in command processor for {command.__name__}")
+        await self.send_message(f"{user.nick}: An error occurred while processing the command.")
 
     async def send_message(self, message):
         return await self._sender.send_message(message)
@@ -168,6 +174,9 @@ class Bot:
             self.commands.append(cmd)
             return cmd
         return inner
+
+    def exception_handler(self, f):
+        self.current_exception_handler = f
 
     def lookup_command(self, command: str) -> typing.Optional[Command]:
         for runner in self.commands:
@@ -207,9 +216,10 @@ class Bot:
                         else:
                             message = message[1]
                         await self.send_message(message)
-                except Exception:
-                    await self.send_message(f"{user.nick}: An error occured when processing the command.")
-                    logger.exception(f"Exception occured in command processor for {args[0]}")
+                except Exception as e:
+                    msg = await self.current_exception_handler(self, runner, user, e)
+                    if msg is not None:
+                        await self.send_message(msg)
 
     async def run_forever(self):
         coros = set()
