@@ -57,7 +57,7 @@ class User:
 class Command:
     parser: typing.Optional["ArgumentParser"]
 
-    def __init__(self: "Command", match: str | Prefix | set, r, required_modes):
+    def __init__(self: "Command", match: str | Prefix | typing.Iterable, r, required_modes):
         self.match = match
         self.runner = r
         self.required_modes = required_modes
@@ -167,7 +167,7 @@ class Bot:
     async def send_message(self, message):
         return await self._sender.send_message(message)
 
-    def command(self, match, *, required_modes=None):
+    def command(self, match: Prefix | str | typing.Iterable, *, required_modes=None):
         def inner(f: typing.Callable) -> Command:
             cmd = Command(match, f, required_modes)
             cmd.__name__ = match
@@ -186,13 +186,10 @@ class Bot:
             elif isinstance(runner.match, str):
                 if command == runner.match:
                     return runner
-            elif isinstance(runner.match, set):
+            else:
                 for match in runner.match:
                     if command == match:
                         return runner
-            else:
-                # theoretically unreachable
-                raise AssertionError("Task failed spectacularly.")
         return None
 
     async def handle_irc_line(self, line):
