@@ -95,7 +95,12 @@ class Command:
         if self.raw:
             gen = self.runner(bot, user, ran, " ".join(args))
         elif self.parser:
-            args = shlex.split(" ".join(args)) # split using shell splitting instead of by spaces
+            joined = " ".join(args)
+            try:
+                args = shlex.split(joined)
+            except ValueError as e:
+                yield f"Your message couldn't be parsed: {e}"
+                return
             try:
                 parsed = self.parser.parse_args(args)
             except ArgumentParsingError as e:
@@ -197,11 +202,14 @@ class Bot:
         if command == "PRIVMSG":
             user = User(**line['user'])
             message = line['message']
-            args = message.split(" ")
-            if runner := self.lookup_command(args[0]):
+            cmd, _, remainder = message.partition(" ")
+            if runner := self.lookup_command(cmd):
+                if not any((runner.raw, runner.parser)):
+                    remainder = remainder.rstrip() # assume trailing spaces are unintentional
+                args = remainder.split(" ")
                 logger.debug(f"Running handler command {runner.__name__}")
                 try:
-                    async for message in runner(self, user, args[0], *args[1:]):
+                    async for message in runner(self, user, cmd, *args):
                         if isinstance(message, str):
                             message = (user.nick, message)
                         if ping := message[0]:
