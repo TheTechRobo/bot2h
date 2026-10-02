@@ -206,7 +206,7 @@ class Bot:
             if runner := self.lookup_command(cmd):
                 if not any((runner.raw, runner.parser)):
                     remainder = remainder.rstrip() # assume trailing spaces are unintentional
-                args = remainder.split(" ")
+                args = remainder.split(" ") if remainder else []
                 logger.debug(f"Running handler command {runner.__name__}")
                 try:
                     async for message in runner(self, user, cmd, *args):
